@@ -1,0 +1,491 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic AI Quiz Generator</title>
+    <style>
+        /* CSS Variables and Base Styles (from previous modern UI) */
+        :root {
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+            --bg-color: #f4f7f9;
+            --text-color: #333;
+            --text-muted-color: #555;
+            --primary-color: #007bff;
+            --primary-hover-color: #0056b3;
+            --primary-color-rgb: 0,123,255;
+            --card-bg-color: #ffffff;
+            --card-border-color: #e0e0e0;
+            --card-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            --input-bg-color: #fff;
+            --input-border-color: #ced4da;
+            --input-focus-border-color: #86b7fe;
+            --input-text-color: #212529;
+            --button-text-color: #ffffff;
+            --correct-bg: #d1e7dd; --correct-text: #0f5132; --correct-border: #badbcc;
+            --wrong-bg: #f8d7da; --wrong-text: #842029; --wrong-border: #f5c2c7;
+            --explanation-bg: #e9ecef; --explanation-text: #495057; --explanation-border: #ced4da;
+            --switch-bg: #ccc; --switch-slider-bg: #fff; --switch-checked-bg: #007bff;
+            --loader-color: var(--primary-color);
+        }
+        [data-theme="dark"] {
+            --bg-color: #1a1a2e; --text-color: #e0e0e0; --text-muted-color: #b0b0b0;
+            --primary-color: #3d5af1; --primary-hover-color: #2a3eb1; --primary-color-rgb: 61,90,241;
+            --card-bg-color: #24243e; --card-border-color: #3a3a5a; --card-shadow: 0 4px 20px rgba(0,0,0,0.25);
+            --input-bg-color: #2c2c4c; --input-border-color: #4a4a6a; --input-focus-border-color: #5d7af3; --input-text-color: #e0e0e0;
+            --correct-bg: #1c4b32; --correct-text: #a3d9b1; --correct-border: #2a6b42;
+            --wrong-bg: #5a1e22; --wrong-text: #f1b0b7; --wrong-border: #7a2c32;
+            --explanation-bg: #2c2c4c; --explanation-text: #c0c0c0; --explanation-border: #4a4a6a;
+            --switch-bg: #4a4a6a; --switch-slider-bg: #e0e0e0; --switch-checked-bg: #3d5af1;
+            --loader-color: var(--primary-color);
+        }
+        body {
+            font-family: var(--font-family); margin: 0; background-color: var(--bg-color);
+            color: var(--text-color); line-height: 1.6; transition: background-color 0.3s ease, color 0.3s ease;
+            padding-bottom: 50px;
+        }
+        .theme-switcher { /* ... (same as before) ... */ position: fixed; top: 20px; right: 20px; display: flex; align-items: center; z-index: 1000;}
+        .theme-switcher span { margin-right: 8px; font-size: 0.9em; }
+        .switch { position: relative; display: inline-block; width: 50px; height: 26px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: var(--switch-bg); transition: .4s; border-radius: 26px; }
+        .slider:before { position: absolute; content: ""; height: 20px; width: 20px; left: 3px; bottom: 3px; background-color: var(--switch-slider-bg); transition: .4s; border-radius: 50%; box-shadow: 0 0 2px rgba(0,0,0,0.3); }
+        input:checked + .slider { background-color: var(--switch-checked-bg); }
+        input:checked + .slider:before { transform: translateX(24px); }
+
+        .container {
+            background-color: var(--card-bg-color); padding: 30px 40px; border-radius: 12px;
+            box-shadow: var(--card-shadow); max-width: 800px; margin: 80px auto 30px auto;
+            border: 1px solid var(--card-border-color);
+            transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+        h1, h2 { color: var(--primary-color); margin-bottom: 0.75em; transition: color 0.3s ease; }
+        h1 { text-align: center; margin-bottom: 1.2em; font-size: 2em;}
+        h2 { border-bottom: 1px solid var(--card-border-color); padding-bottom: 0.4em; font-size: 1.5em;}
+
+        /* Form Elements Styling */
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; font-weight: 500; margin-bottom: 8px; color: var(--text-muted-color); }
+        .form-group input[type="text"],
+        .form-group input[type="number"],
+        .form-group textarea,
+        .form-group select {
+            width: calc(100% - 24px); padding: 12px; border: 1px solid var(--input-border-color);
+            border-radius: 6px; background-color: var(--input-bg-color); color: var(--input-text-color);
+            font-size: 0.95em; transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .form-group textarea { min-height: 100px; resize: vertical; }
+        .form-group input:focus, .form-group textarea:focus, .form-group select:focus {
+            outline: none; border-color: var(--input-focus-border-color);
+            box-shadow: 0 0 0 0.2rem rgba(var(--primary-color-rgb), 0.25);
+        }
+        button { /* ... (same as before, ensure display:inline-flex if using icons) ... */ background-color: var(--primary-color); color: var(--button-text-color); padding: 12px 24px; border: none; border-radius: 6px; cursor: pointer; font-size: 1em; font-weight: 500; transition: background-color 0.2s ease, transform 0.1s ease; display: inline-flex; align-items: center; justify-content: center; }
+        button:hover { background-color: var(--primary-hover-color); transform: translateY(-1px); }
+        button:active { transform: translateY(0px); }
+        button#submitBtn { background-color: #28a745; }
+        button#submitBtn:hover { background-color: #1e7e34; }
+        [data-theme="dark"] button#submitBtn { background-color: #38c172; }
+        [data-theme="dark"] button#submitBtn:hover { background-color: #2d995b; }
+
+        /* Quiz Area Styling (same as before) */
+        .question-block { margin-bottom: 30px; padding: 25px; border: 1px solid var(--card-border-color); border-radius: 8px; background-color: var(--bg-color); box-shadow: 0 2px 8px rgba(0,0,0,0.05); transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease; }
+        [data-theme="dark"] .question-block { background-color: #1e1e36; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+        .question-text { font-weight: 600; margin-bottom: 18px; font-size: 1.2em; color: var(--text-color); }
+        .options label { display: block; margin-bottom: 12px; padding: 14px 18px; border-radius: 6px; border: 1px solid var(--input-border-color); cursor: pointer; transition: background-color 0.2s, border-color 0.2s; background-color: var(--input-bg-color); color: var(--text-color); }
+        .options label:hover:not(.submitted) { background-color: var(--explanation-bg); border-color: var(--primary-color); }
+        .options input[type="radio"] { margin-right: 12px; transform: scale(1.2); accent-color: var(--primary-color); }
+        .options input[type="radio"]:disabled { accent-color: var(--secondary-color); }
+        .explanation { margin-top: 18px; padding: 15px; background-color: var(--explanation-bg); border: 1px solid var(--explanation-border); border-left: 4px solid var(--primary-color); border-radius: 0 4px 4px 0; font-size: 0.95em; color: var(--explanation-text); display: none; transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease; }
+        .explanation strong { color: var(--primary-color); }
+        .correct-answer-option { background-color: var(--correct-bg) !important; color: var(--correct-text) !important; border-color: var(--correct-border) !important; font-weight: 500; }
+        .user-wrong-answer-option { background-color: var(--wrong-bg) !important; color: var(--wrong-text) !important; border-color: var(--wrong-border) !important; font-weight: 500; }
+        .user-wrong-answer-option::before, .correct-answer-option::before { font-weight: 600; margin-right: 5px; }
+        .user-wrong-answer-option::before { content: "Your answer: "; }
+        .correct-answer-option:not(.user-selected-correct)::before { content: "Correct answer: "; }
+        .correct-answer-option.user-selected-correct::before { content: "Your answer (Correct!): "; }
+        #resultsArea { text-align: center; padding: 25px; border-top: 2px solid var(--primary-color); margin-top: 35px; }
+        #resultsArea #score { font-size: 1.4em; font-weight: 600; color: var(--primary-color); margin-bottom: 20px; }
+        #resultsArea p { color: var(--text-muted-color); }
+        #jsonError, #apiError { color: #dc3545; margin-top: 10px; font-weight: 500; }
+        [data-theme="dark"] #jsonError, [data-theme="dark"] #apiError { color: #f1aeb5; }
+
+        /* Loader */
+        .loader {
+            border: 5px solid var(--bg-color); /* Light grey */
+            border-top: 5px solid var(--loader-color); /* Blue */
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+            display: none; /* Hidden by default */
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Visibility control */
+        #quizGeneratorArea, #quizContainer, #resultsArea { display: none; }
+        /* Initial state: show generator */
+        body.initial #quizGeneratorArea { display: block; }
+    </style>
+</head>
+<body class="initial">
+
+    <div class="theme-switcher">
+        <span id="theme-label">Light Mode</span>
+        <label class="switch">
+            <input type="checkbox" id="themeToggle">
+            <span class="slider round"></span>
+        </label>
+    </div>
+
+    <div class="container">
+        <h1>Dynamic AI Quiz Generator</h1>
+
+        <div id="quizGeneratorArea">
+            <h2>1. Generate Your Quiz</h2>
+            <div class="form-group">
+                <label for="quizTopics">Topics (comma-separated, e.g., "Networking Models, OSI Layer, TCP/IP"):</label>
+                <textarea id="quizTopics" rows="3" placeholder="Enter topics for the quiz"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="quizDifficulty">Difficulty Level:</label>
+                <select id="quizDifficulty">
+                    <option value="easy">Easy</option>
+                    <option value="medium" selected>Medium</option>
+                    <option value="hard">Hard</option>
+                    <option value="expert">Expert</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label for="numQuestions">Number of Questions:</label>
+                <input type="number" id="numQuestions" value="5" min="1" max="20">
+            </div>
+            <button onclick="generateQuizFromAPI()">Generate Quiz with AI »</button>
+            <div id="apiError"></div>
+            <div class="loader" id="apiLoader"></div>
+            <p style="font-size: 0.8em; color: var(--text-muted-color); margin-top: 15px;">
+                Note: Question generation uses AI. Ensure topics are clear for best results.
+            </p>
+             <hr style="margin: 30px 0;">
+            <h2>Or, Load Quiz from JSON</h2>
+            <div class="form-group">
+                <label for="jsonInput">Paste JSON question set here:</label>
+                <textarea id="jsonInput" placeholder="[ { "question_text": "..." } ]"></textarea>
+            </div>
+            <button onclick="loadQuizFromTextarea()">Load from JSON Text</button>
+            <div id="jsonError"></div>
+        </div>
+
+
+        <div id="quizContainer">
+            <h2>2. Quiz Questions</h2>
+            <form id="quizForm">
+                <!-- Questions will be injected here -->
+            </form>
+            <button id="submitBtn" onclick="submitQuiz()">Submit Answers</button>
+        </div>
+
+        <div id="resultsArea">
+            <h2>3. Quiz Results</h2>
+            <p id="score"></p>
+            <button onclick="resetApp()">Start New Quiz</button>
+        </div>
+    </div>
+
+    <script>
+        let quizData = [];
+        let userAnswers = [];
+        const GEMINI_API_KEY = "AIzaSyDXAaZbBobktdbLgiDUp-7Pl8hiC4u9BJs"; // !!! REPLACE WITH YOUR KEY or use a backend proxy
+
+        // UI Elements
+        const bodyEl = document.body;
+        const themeToggle = document.getElementById('themeToggle');
+        const themeLabel = document.getElementById('theme-label');
+        const htmlElement = document.documentElement;
+
+        const quizGeneratorArea = document.getElementById('quizGeneratorArea');
+        const quizTopicsEl = document.getElementById('quizTopics');
+        const quizDifficultyEl = document.getElementById('quizDifficulty');
+        const numQuestionsEl = document.getElementById('numQuestions');
+        const apiErrorEl = document.getElementById('apiError');
+        const apiLoaderEl = document.getElementById('apiLoader');
+
+        const jsonInputEl = document.getElementById('jsonInput');
+        const jsonErrorEl = document.getElementById('jsonError');
+
+        const quizContainer = document.getElementById('quizContainer');
+        const quizFormEl = document.getElementById('quizForm');
+        const submitBtn = document.getElementById('submitBtn');
+        const resultsArea = document.getElementById('resultsArea');
+        const scoreEl = document.getElementById('score');
+
+        // --- Theme Switcher Logic ---
+        function setTema(tema) {
+            htmlElement.setAttribute('data-theme', tema);
+            localStorage.setItem('quizTheme', tema);
+            themeToggle.checked = (tema === 'dark');
+            themeLabel.textContent = (tema === 'dark') ? 'Dark Mode' : 'Light Mode';
+        }
+        themeToggle.addEventListener('change', () => setTema(themeToggle.checked ? 'dark' : 'light'));
+        const savedTheme = localStorage.getItem('quizTheme') || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        setTema(savedTheme);
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+            if (!localStorage.getItem('quizTheme')) setTema(e.matches ? 'dark' : 'light');
+        });
+
+        // --- Initial Sample JSON for Textarea ---
+        jsonInputEl.value = JSON.stringify([
+            {
+                "id": "sample_q1",
+                "question_text": "What is the capital of France (Sample)?",
+                "options": [ "Berlin", "Madrid", "Paris", "Rome" ],
+                "correct_option_index": 2,
+                "explanation": "Paris is the capital and most populous city of France."
+            }
+        ], null, 2);
+
+        // --- Core Quiz Logic ---
+        function prepareUIForQuiz() {
+            bodyEl.classList.remove('initial');
+            quizGeneratorArea.style.display = 'none';
+            quizContainer.style.display = 'block';
+            resultsArea.style.display = 'none';
+            submitBtn.style.display = 'inline-flex';
+            apiErrorEl.textContent = '';
+            jsonErrorEl.textContent = '';
+        }
+
+        function loadQuizFromJsonData(jsonData) {
+            try {
+                quizData = jsonData; // jsonData is already an object/array
+                if (!Array.isArray(quizData) || quizData.length === 0 || quizData.some(q => !q.question_text || !q.options || q.correct_option_index === undefined)) {
+                    throw new Error("Invalid question data format. Ensure it's an array of questions with required fields.");
+                }
+                displayQuiz();
+                prepareUIForQuiz();
+            } catch (error) {
+                console.error("Error processing quiz data:", error);
+                jsonErrorEl.textContent = "Error: " + error.message; // Show error in JSON load area
+                apiErrorEl.textContent = "Error: " + error.message; // Or in API area if applicable
+                resetAppToGenerator(); // Go back to generator if data is bad
+            }
+        }
+        
+        function loadQuizFromTextarea() {
+            const jsonString = jsonInputEl.value;
+            jsonErrorEl.textContent = '';
+            try {
+                const parsedJson = JSON.parse(jsonString);
+                loadQuizFromJsonData(parsedJson);
+            } catch (error) {
+                jsonErrorEl.textContent = "Error parsing JSON from textarea: " + error.message;
+                console.error("JSON Parsing Error (Textarea):", error);
+            }
+        }
+
+        async function generateQuizFromAPI() {
+            const topics = quizTopicsEl.value.trim();
+            const difficulty = quizDifficultyEl.value;
+            const count = parseInt(numQuestionsEl.value);
+
+            if (!topics) {
+                apiErrorEl.textContent = "Please enter some topics.";
+                return;
+            }
+            if (count < 1 || count > 20) { // Max 20 for safety with LLM tokens
+                apiErrorEl.textContent = "Number of questions must be between 1 and 20.";
+                return;
+            }
+
+            apiErrorEl.textContent = '';
+            apiLoaderEl.style.display = 'block';
+
+            const prompt = `
+                Generate a set of ${count} multiple-choice questions (MCQs) for a quiz.
+                The topics for the quiz are: "${topics}".
+                The difficulty level should be: "${difficulty}".
+
+                For each question, provide:
+                1. "id": A unique string identifier for the question (e.g., "q_topic_1").
+                2. "question_text": The question itself.
+                3. "options": An array of 4 string options.
+                4. "correct_option_index": The 0-based index of the correct option in the "options" array.
+                5. "explanation": A brief explanation for why the correct answer is correct.
+
+                Ensure the questions are diverse and cover different aspects of the topics.
+                Try to make the questions different from any previously generated for similar topics.
+
+                Output the entire set of questions as a single JSON array. Do not include any other text, just the JSON array.
+
+                Example of one question object in the array:
+                {
+                    "id": "example_q1",
+                    "question_text": "What is 2 + 2?",
+                    "options": ["3", "4", "5", "22"],
+                    "correct_option_index": 1,
+                    "explanation": "Basic arithmetic: 2 + 2 equals 4."
+                }
+            `;
+            
+            // --- !!! CRITICAL: API Call Section !!! ---
+            // In a real app, this request should go to YOUR BACKEND PROXY.
+            // The backend proxy then adds the API key and calls Gemini.
+            // For demonstration, this is a direct client-side call which is INSECURE.
+            // DO NOT DEPLOY WITH API KEY EXPOSED IN CLIENT-SIDE CODE.
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=${GEMINI_API_KEY}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }],
+                        // Optional: safetySettings, generationConfig
+                    }),
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    console.error('Gemini API Error Response:', errorData);
+                    throw new Error(`API Error: ${response.status} ${response.statusText}. ${errorData.error?.message || ''}`);
+                }
+
+                const data = await response.json();
+                
+                if (data.candidates && data.candidates[0] && data.candidates[0].content && data.candidates[0].content.parts && data.candidates[0].content.parts[0]) {
+                    let jsonResponseText = data.candidates[0].content.parts[0].text;
+                    // Gemini might wrap JSON in ```json ... ```, try to extract it
+                    const jsonMatch = jsonResponseText.match(/```json\s*([\s\S]*?)\s*```/);
+                    if (jsonMatch && jsonMatch[1]) {
+                        jsonResponseText = jsonMatch[1];
+                    }
+                    
+                    const generatedQuestions = JSON.parse(jsonResponseText);
+                    loadQuizFromJsonData(generatedQuestions);
+                } else {
+                    console.error('Unexpected API response structure:', data);
+                    throw new Error("Could not extract questions from API response. Check console for details.");
+                }
+
+            } catch (error) {
+                console.error("Error fetching or parsing from API:", error);
+                apiErrorEl.textContent = "Error generating quiz: " + error.message;
+            } finally {
+                apiLoaderEl.style.display = 'none';
+            }
+        }
+
+
+        function displayQuiz() { // (Mostly same as before)
+            quizFormEl.innerHTML = '';
+            userAnswers = new Array(quizData.length).fill(null);
+
+            quizData.forEach((question, index) => {
+                const questionBlock = document.createElement('div');
+                questionBlock.className = 'question-block';
+                questionBlock.id = `question-${index}`;
+
+                const questionText = document.createElement('p');
+                questionText.className = 'question-text';
+                questionText.textContent = `${index + 1}. ${question.question_text}`;
+                questionBlock.appendChild(questionText);
+
+                const optionsDiv = document.createElement('div');
+                optionsDiv.className = 'options';
+
+                question.options.forEach((option, optionIndex) => {
+                    const label = document.createElement('label');
+                    label.id = `q${index}_opt_label${optionIndex}`;
+                    
+                    const radio = document.createElement('input');
+                    radio.type = 'radio';
+                    radio.name = `question_${index}`;
+                    radio.value = optionIndex;
+                    radio.id = `q${index}_opt${optionIndex}`;
+                    radio.onchange = () => { userAnswers[index] = parseInt(radio.value); };
+                    
+                    label.appendChild(radio);
+                    label.appendChild(document.createTextNode(" " + option));
+                    optionsDiv.appendChild(label);
+                });
+                questionBlock.appendChild(optionsDiv);
+
+                if (question.explanation) {
+                    const explanationDiv = document.createElement('div');
+                    explanationDiv.className = 'explanation';
+                    explanationDiv.id = `explanation-${index}`;
+                    explanationDiv.innerHTML = `<strong>Explanation:</strong> ${question.explanation}`;
+                    questionBlock.appendChild(explanationDiv);
+                }
+                quizFormEl.appendChild(questionBlock);
+            });
+        }
+
+        function submitQuiz() { // (Mostly same as before)
+            let score = 0;
+            let allAnswered = userAnswers.every(answer => answer !== null);
+
+            if (!allAnswered) {
+                if (!confirm("You haven't answered all questions. Do you want to submit anyway?")) {
+                    return;
+                }
+            }
+
+            quizData.forEach((question, index) => {
+                const questionBlock = document.getElementById(`question-${index}`);
+                const optionLabels = questionBlock.querySelectorAll('.options label');
+                const radioButtons = questionBlock.querySelectorAll('.options input[type="radio"]');
+                const explanationDiv = document.getElementById(`explanation-${index}`);
+                
+                const selectedOptionIndex = userAnswers[index];
+                const correctAnswerIndex = question.correct_option_index;
+
+                radioButtons.forEach(radio => radio.disabled = true);
+                optionLabels.forEach(label => label.classList.add('submitted'));
+
+                if (explanationDiv) explanationDiv.style.display = 'block';
+                if (optionLabels[correctAnswerIndex]) optionLabels[correctAnswerIndex].classList.add('correct-answer-option');
+                
+                if (selectedOptionIndex !== null) {
+                    if (selectedOptionIndex === correctAnswerIndex) {
+                        score++;
+                        if (optionLabels[selectedOptionIndex]) optionLabels[selectedOptionIndex].classList.add('user-selected-correct');
+                    } else {
+                        if (optionLabels[selectedOptionIndex]) optionLabels[selectedOptionIndex].classList.add('user-wrong-answer-option');
+                    }
+                }
+            });
+
+            const percentage = quizData.length > 0 ? (score / quizData.length) * 100 : 0;
+            scoreEl.innerHTML = `Your Score: ${score} out of ${quizData.length} (${percentage.toFixed(1)}%)`;
+            
+            submitBtn.style.display = 'none';
+            resultsArea.style.display = 'block';
+            resultsArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        
+        function resetAppToGenerator() {
+            bodyEl.classList.add('initial'); // Show generator area
+            quizGeneratorArea.style.display = 'block';
+            quizContainer.style.display = 'none';
+            resultsArea.style.display = 'none';
+            apiErrorEl.textContent = '';
+            jsonErrorEl.textContent = '';
+            quizFormEl.innerHTML = '';
+        }
+
+        function resetApp() {
+            quizData = [];
+            userAnswers = [];
+            // quizTopicsEl.value = ''; // Optional: Clear generator fields
+            // numQuestionsEl.value = '5';
+            // quizDifficultyEl.value = 'medium';
+            resetAppToGenerator();
+        }
+        
+        // Initial setup to show the generator
+        resetAppToGenerator();
+
+    </script>
+</body>
+</html>
